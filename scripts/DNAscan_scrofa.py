@@ -152,8 +152,6 @@ RG_PU = paths_configs.RG_PU
 
 RG_SM = paths_configs.RG_SM
 
-tmp_dir = paths_configs.tmp_dir
-
 path_scripts = paths_configs.path_scripts
 
 path_samblaster = paths_configs.path_samblaster
@@ -170,22 +168,12 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument(
     '-RG',
-    action="store_true",
+    action="store",
     dest="RG",
     default=False,
     help=
     'if this flag is set the alignment stage will use the read group provided in paths_configs.py (Default = "False")'
 )
-
-parser.add_argument(
-    '-tmp',
-    action="store_true",
-    dest="tmp",
-    default=False,
-    help=
-    'if this flag is set the alignment stage will use the directory provided in paths_configs.py to save the temporary files instead of /tmp  (Default = "False")'
-)
-
 
 parser.add_argument(
     '-alsgenescanner',
@@ -489,8 +477,6 @@ filter_string = args.filter_string
 custom_microbes = args.custom_microbes
 
 RG = args.RG
-
-tmp = args.tmp
 
 ref_file = args.ref_file 
 
@@ -798,16 +784,6 @@ else:
 
     samblaster_cmq = ""
 
-if tmp == True : 
-    
-    tmp_dir = tmp_dir
-    
-else:
-    
-    tmp_dir = "/tmp"
-
-
-print(tmp_dir)
 # 8. Alignment
 # Performs alignment if input sequencing data is in fastq format
 
@@ -824,10 +800,10 @@ if alignment:
             if mode == "fast":
 
                 os.system(
-                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  --tmpdir=%s -o %ssorted.bam  /dev/stdin"
+                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  --tmpdir=%stmp -o %ssorted.bam  /dev/stdin"
                     % (path_hisat,hisat_custom_options, num_cpu, path_hisat_index, input_file,
                        input_file2, samblaster_cmq, path_samtools, num_cpu,
-                       path_sambamba, num_cpu, tmp_dir, out))
+                       path_sambamba, num_cpu, out, out))
 
                 bam_file = "%ssorted.bam" % (out)
 
@@ -861,16 +837,16 @@ if alignment:
 
                     rg_option_bwa = ""
                 print(
-                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
+                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
                     % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
                        input_file, input_file2, samblaster_cmq, path_samtools,
-                       num_cpu, path_sambamba, num_cpu, tmp_dir, out, path_samtools,
+                       num_cpu, path_sambamba, num_cpu, out, path_samtools,
                        num_cpu, out))
                 os.system(
-                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
+                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
                     % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
                        input_file, input_file2, samblaster_cmq, path_samtools,
-                       num_cpu, path_sambamba, num_cpu, tmp_dir,out, path_samtools,
+                       num_cpu, path_sambamba, num_cpu, out, path_samtools,
                        num_cpu, out))
                 print(
                     "%ssamtools view -@ %s -bhf 4 %ssorted.bam | samtools bam2fq - > %sunaligned_reads.fq"
@@ -879,15 +855,15 @@ if alignment:
                     "%ssamtools view -@ %s -bhf 4 %ssorted.bam | samtools bam2fq - > %sunaligned_reads.fq"
                     % (path_samtools, num_cpu, out, out))
                 print(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
+                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
                     % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
                        samblaster_cmq, path_samtools, num_cpu, path_sambamba,
-                       num_cpu,tmp_dir, out, path_samtools, num_cpu, out))
+                       num_cpu, out, path_samtools, num_cpu, out))
                 os.system(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
+                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
                     % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
                        samblaster_cmq, path_samtools, num_cpu, path_sambamba,
-                       num_cpu, tmp_dir, out, path_samtools, num_cpu, out))
+                       num_cpu, out, path_samtools, num_cpu, out))
 
                 os.system("%ssamtools view -H %ssorted.bam > %sheader.txt" %
                           (path_samtools, out, out))
@@ -918,9 +894,9 @@ if alignment:
             if mode == "fast":
 
                 os.system(
-                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin"
+                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s -o %ssorted.bam /dev/stdin"
                     % (path_hisat, hisat_custom_options, num_cpu, path_hisat_index, input_file,
-                       samblaster_cmq, path_samtools, num_cpu, tmp_dir, path_sambamba,
+                       samblaster_cmq, path_samtools, num_cpu, path_sambamba,
                        num_cpu, out))
 
                 bam_file = "%ssorted.bam" % (out)
@@ -954,10 +930,10 @@ if alignment:
                     rg_option = ""
 
                 os.system(
-                    "%shisat2 %s --no-softclip --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
+                    "%shisat2 %s --no-softclip --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -Sb -  | %ssambamba sort -t %s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
                     % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
                        input_file, samblaster_cmq, path_samtools,
-                       path_sambamba, num_cpu,tmp_dir, out, path_samtools, num_cpu,
+                       path_sambamba, num_cpu, out, path_samtools, num_cpu,
                        out))
 
                 os.system(
@@ -965,9 +941,9 @@ if alignment:
                     % (path_samtools, num_cpu, out, out))
 
                 os.system(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq| %s %ssamtools view -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam /dev/stdin; %ssamtools index -@ %s %ssorted_bwa.bam "
+                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq| %s %ssamtools view -Sb -  | %ssambamba sort -t %s -o %ssorted_bwa.bam /dev/stdin; %ssamtools index -@ %s %ssorted_bwa.bam "
                     % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
-                       samblaster_cmq, path_samtools, path_sambamba, num_cpu, tmp_dir,
+                       samblaster_cmq, path_samtools, path_sambamba, num_cpu,
                        out, path_samtools, num_cpu, out))
 
                 os.system("%ssamtools view -H %ssorted.bam > %sheader.txt" %

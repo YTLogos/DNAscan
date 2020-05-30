@@ -64,8 +64,6 @@ from argparse import RawTextHelpFormatter
 
 # 2. Define paths_configs variables from paths_configs.py
 
-#filter_string = paths_configs.filter_string
-
 path_iobio = paths_configs.path_iobio
 
 path_gene_list = paths_configs.path_gene_list
@@ -152,8 +150,6 @@ RG_PU = paths_configs.RG_PU
 
 RG_SM = paths_configs.RG_SM
 
-tmp_dir = paths_configs.tmp_dir
-
 path_scripts = paths_configs.path_scripts
 
 path_samblaster = paths_configs.path_samblaster
@@ -170,22 +166,12 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument(
     '-RG',
-    action="store_true",
+    action="store",
     dest="RG",
     default=False,
     help=
     'if this flag is set the alignment stage will use the read group provided in paths_configs.py (Default = "False")'
 )
-
-parser.add_argument(
-    '-tmp',
-    action="store_true",
-    dest="tmp",
-    default=False,
-    help=
-    'if this flag is set the alignment stage will use the directory provided in paths_configs.py to save the temporary files instead of /tmp  (Default = "False")'
-)
-
 
 parser.add_argument(
     '-alsgenescanner',
@@ -207,7 +193,7 @@ parser.add_argument(
     '-filter_string',
     action="store",
     dest="filter_string",
-    default="QUAL > 1 & QUAL / INFO/AO > 10 & SAF > 0 & SAR > 0 & RPR > 1 & RPL > 1",
+    default="",
     help='bcftools filter string, eg "GQ>20 & DP>10" (Default = "")')
 
 parser.add_argument(
@@ -384,7 +370,7 @@ parser.add_argument(
     dest="reference",
     default="hg19",
     help=
-    'options are sus_scrofa_99, hg19, hg38, grch37 and grch38 the path to the reference fasta file must be specified in paths_configs.py [string]'
+    'options are hg19, hg38, grch37 and grch38 the path to the reference fasta file must be specified in paths_configs.py [string]'
 )
 
 parser.add_argument(
@@ -490,11 +476,9 @@ custom_microbes = args.custom_microbes
 
 RG = args.RG
 
-tmp = args.tmp
-
 ref_file = args.ref_file 
 
-dnascan_main_dir = args.dnascan_main_dir
+dnascan_main_dir = args.dnascan_dir
 
 if ref_file:
     
@@ -581,7 +565,7 @@ if alsgenescanner:
 
     BED = True
 
-    path_expansionHunter_jsons = '%s/repeats/%s/' % (dnascan_dir, reference)
+    path_expansionHunter_jsons = '%s/%s/repeats/' % (path_to_db, reference)
 
     path_bed = '%s/als_gene_scanner.bed' % (path_to_db)
 
@@ -792,22 +776,12 @@ else:
 # The output from HISAT2 and BWA is piped into $samblaster_cmq during the alignment
 if rm_dup == "True":
 
-    samblaster_cmq = "%ssamblaster --ignoreUnmated |" % (path_samblaster)
+    samblaster_cmq = "%ssamblaster |" % (path_samblaster)
 
 else:
 
     samblaster_cmq = ""
 
-if tmp == True : 
-    
-    tmp_dir = tmp_dir
-    
-else:
-    
-    tmp_dir = "/tmp"
-
-
-print(tmp_dir)
 # 8. Alignment
 # Performs alignment if input sequencing data is in fastq format
 
@@ -824,10 +798,10 @@ if alignment:
             if mode == "fast":
 
                 os.system(
-                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  --tmpdir=%s -o %ssorted.bam  /dev/stdin"
+                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  --tmpdir=%stmp -o %ssorted.bam  /dev/stdin"
                     % (path_hisat,hisat_custom_options, num_cpu, path_hisat_index, input_file,
                        input_file2, samblaster_cmq, path_samtools, num_cpu,
-                       path_sambamba, num_cpu, tmp_dir, out))
+                       path_sambamba, num_cpu, out, out))
 
                 bam_file = "%ssorted.bam" % (out)
 
@@ -860,34 +834,23 @@ if alignment:
                     rg_option_hisat2 = ""
 
                     rg_option_bwa = ""
-                print(
-                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
-                    % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
-                       input_file, input_file2, samblaster_cmq, path_samtools,
-                       num_cpu, path_sambamba, num_cpu, tmp_dir, out, path_samtools,
-                       num_cpu, out))
+
                 os.system(
-                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
+                    "%shisat2 %s %s  --no-softclip --no-spliced-alignment -p %s -x %s -1 %s -2 %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s  -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
                     % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
                        input_file, input_file2, samblaster_cmq, path_samtools,
-                       num_cpu, path_sambamba, num_cpu, tmp_dir,out, path_samtools,
+                       num_cpu, path_sambamba, num_cpu, out, path_samtools,
                        num_cpu, out))
-                print(
-                    "%ssamtools view -@ %s -bhf 4 %ssorted.bam | samtools bam2fq - > %sunaligned_reads.fq"
-                    % (path_samtools, num_cpu, out, out))
+
                 os.system(
                     "%ssamtools view -@ %s -bhf 4 %ssorted.bam | samtools bam2fq - > %sunaligned_reads.fq"
                     % (path_samtools, num_cpu, out, out))
-                print(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
-                    % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
-                       samblaster_cmq, path_samtools, num_cpu, path_sambamba,
-                       num_cpu,tmp_dir, out, path_samtools, num_cpu, out))
+
                 os.system(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
+                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s -o %ssorted_bwa.bam  /dev/stdin ; %ssamtools index -@ %s %ssorted_bwa.bam "
                     % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
                        samblaster_cmq, path_samtools, num_cpu, path_sambamba,
-                       num_cpu, tmp_dir, out, path_samtools, num_cpu, out))
+                       num_cpu, out, path_samtools, num_cpu, out))
 
                 os.system("%ssamtools view -H %ssorted.bam > %sheader.txt" %
                           (path_samtools, out, out))
@@ -918,9 +881,9 @@ if alignment:
             if mode == "fast":
 
                 os.system(
-                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin"
+                    "%shisat2 %s --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -@ %s -Sb -  | %ssambamba sort -t %s -o %ssorted.bam /dev/stdin"
                     % (path_hisat, hisat_custom_options, num_cpu, path_hisat_index, input_file,
-                       samblaster_cmq, path_samtools, num_cpu, tmp_dir, path_sambamba,
+                       samblaster_cmq, path_samtools, num_cpu, path_sambamba,
                        num_cpu, out))
 
                 bam_file = "%ssorted.bam" % (out)
@@ -954,10 +917,10 @@ if alignment:
                     rg_option = ""
 
                 os.system(
-                    "%shisat2 %s --no-softclip --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
+                    "%shisat2 %s --no-softclip --no-spliced-alignment -p %s -x %s -U %s | %s %ssamtools view -Sb -  | %ssambamba sort -t %s -o %ssorted.bam /dev/stdin; %ssamtools index -@ %s %ssorted.bam"
                     % (path_hisat, hisat_custom_options, rg_option_hisat2, num_cpu, path_hisat_index,
                        input_file, samblaster_cmq, path_samtools,
-                       path_sambamba, num_cpu,tmp_dir, out, path_samtools, num_cpu,
+                       path_sambamba, num_cpu, out, path_samtools, num_cpu,
                        out))
 
                 os.system(
@@ -965,9 +928,9 @@ if alignment:
                     % (path_samtools, num_cpu, out, out))
 
                 os.system(
-                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq| %s %ssamtools view -Sb -  | %ssambamba sort -t %s --tmpdir=%s -o %ssorted_bwa.bam /dev/stdin; %ssamtools index -@ %s %ssorted_bwa.bam "
+                    "%sbwa mem %s %s -t %s %s %sunaligned_reads.fq| %s %ssamtools view -Sb -  | %ssambamba sort -t %s -o %ssorted_bwa.bam /dev/stdin; %ssamtools index -@ %s %ssorted_bwa.bam "
                     % (path_bwa, bwa_custom_options, rg_option_bwa, num_cpu, path_bwa_index, out,
-                       samblaster_cmq, path_samtools, path_sambamba, num_cpu, tmp_dir,
+                       samblaster_cmq, path_samtools, path_sambamba, num_cpu,
                        out, path_samtools, num_cpu, out))
 
                 os.system("%ssamtools view -H %ssorted.bam > %sheader.txt" %
@@ -1237,13 +1200,13 @@ if variantcalling:
 # 11. Perform variant hard filtering
 
 if filter_string:
-    print('%sbcftools filter -i \" %s \" %s | bgzip -c > %s%s_sorted_filtered.vcf.gz ; %stabix -fp vcf %s%s_sorted_filtered.vcf.gz' 
-        % ( path_bcftools, filter_string, variant_results_file, out, sample_name, path_tabix, out,sample_name))
-    os.system(
-        "%sbcftools filter -i \'%s\' %s | bgzip -c > %s%s_sorted_filtered.vcf.gz ; %stabix -fp vcf %s%s_sorted_filtered.vcf.gz " % (
-            path_bcftools, filter_string, variant_results_file, out, sample_name, path_tabix, out,sample_name))
 
-    variant_results_file = "%s%s_sorted_filtered.vcf.gz" % (
+    os.system(
+        "%sbcftools filter -i \'%s\' %s | bgzip -c > %s%s_sorted_filtered.vcf.gz ; %tabix -fp vcf %s%s_sorted_filtered.vcf.gz; mv %s%s_sorted_filtered.vcf.gz %sresults " (
+            path_bcftools, filter_string, variant_results_file, out,
+            sample_name, path_tabix, sample_name, out, out, sample_name, out))
+
+    variant_results_file = "%sresults/%s_sorted_filtered.vcf.gz" % (
         out, sample_name)
 
 # 12. Performs known expansions search with ExpansionHunter
@@ -1261,12 +1224,12 @@ if expansion:
     else:
 
         os.system(
-            "%sExpansionHunter --reads %s --reference %s  --variant-catalog %s/variant_catalog_%s.json --output-prefix %s/temp_EH"
+            "%sExpansionHunter --bam %s --ref-fasta %s --repeat-specs %s --vcf %s/EH_vcf --json %s/temp_EH.json --log %s/temp_EH.log"
             % (path_expansionHunter, bam_file, path_reference,
-               path_expansionHunter_jsons, reference, out))
+               path_expansionHunter_jsons, out, out, out))
 
         os.system(
-            "mv %s/temp_EH.vcf %s/results/%s_expansions.vcf ; bgzip %s/results/%s_expansions.vcf ; %stabix -p vcf %s/results/%s_expansions.vcf.gz"
+            "mv %s/EH_vcf %s/results/%s_expansions.vcf ; bgzip %s/results/%s_expansions.vcf ; %stabix -p vcf %s/results/%s_expansions.vcf.gz"
             % (out, out, sample_name, out, sample_name, path_tabix, out,
                sample_name))
 
